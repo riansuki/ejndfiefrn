@@ -1,19 +1,11 @@
 <<!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Indonesia Visa Overstay Calculator</title>
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <style>
-
         * {
 
             margin: 0;
@@ -1709,19 +1701,18 @@
     }
 
     // --- FUNGSI GLOBAL UNTUK MEMILIH MASA BERLAKU VISA D ---
-
     window.selectValidity = function(value, element) {
-
         document.getElementById('visa-validity').value = value;
-
         const container = element.parentElement;
-
         const allCards = container.querySelectorAll('.visa-card');
-
         allCards.forEach(card => card.classList.remove('selected'));
-
         element.classList.add('selected');
-
+        
+        // Memunculkan Timeline MREP setelah tombol Masa Berlaku diklik
+        const mrepTimeline = document.getElementById('mrep-timeline-ui');
+        if (mrepTimeline) {
+            mrepTimeline.style.display = 'block';
+        }
     }
 
     // --- FUNGSI GLOBAL BARU UNTUK MEMILIH KARTU VISA D (Multiple) ---
@@ -2132,10 +2123,7 @@
                 if (visaTypeSelect.value === 'visaD') {
 
                     const subtypeD = document.getElementById('d-visa-subtype').value;
-
                     const extD = document.getElementById('extensions').value;
-
-                   
 
                    // Sembunyikan jika durasi awal 30 Hari, ATAU memilih D8
                     const mrepTimeline = document.getElementById('mrep-timeline-ui');
@@ -2145,13 +2133,15 @@
                         document.getElementById('visa-validity').value = ""; 
                     } else {
                         validityGroup.style.display = 'block';
-                        if (mrepTimeline) mrepTimeline.style.display = 'block'; // Munculkan Timeline
+                        // Sembunyikan timeline di awal, HANYA munculkan jika sudah ada masa berlaku yang dipilih
+                        if (mrepTimeline && document.getElementById('visa-validity').value === "") {
+                            mrepTimeline.style.display = 'none'; 
+                        } else if (mrepTimeline) {
+                            mrepTimeline.style.display = 'block';
+                        }
                     }
-
                 } else {
-
                     validityGroup.style.display = 'none';
-
                 }
 
             }
