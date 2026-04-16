@@ -873,31 +873,101 @@
         }
 
         .deportation-alert {
-
             background-color: #ffebee;
-
             color: #c62828;
-
             padding: 12px;
-
             border-radius: 6px;
-
             margin-top: 10px;
-
             border: 1px solid #ef9a9a;
-
             font-size: 14px;
-
             display: flex;
-
             align-items: center;
-
             gap: 10px;
-
         }
 
-
-
+        /* --- GAYA DESAIN TIMELINE MREP --- */
+        .timeline-container {
+            display: none; /* Sembunyikan secara default */
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 25px 20px;
+            margin-bottom: 25px;
+            width: 100%;
+        }
+        .timeline-title {
+            text-align: center;
+            font-weight: 600;
+            color: #1a3a6d;
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+        .timeline-track {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 0;
+        }
+        .timeline-line-bg {
+            position: absolute;
+            top: 15px;
+            left: 40px;
+            right: 40px;
+            height: 4px;
+            background-color: #e5e7eb;
+            z-index: 1;
+        }
+        .timeline-line-fill {
+            position: absolute;
+            top: 15px;
+            left: 40px;
+            height: 4px;
+            background-color: #000080; /* Warna biru gelap */
+            z-index: 2;
+            width: 25%; /* Sesuai gambar, mengisi sampai node ke-2 */
+        }
+        .timeline-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 3;
+            width: 80px;
+            cursor: pointer;
+        }
+        .timeline-circle {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background-color: #fff;
+            border: 4px solid #000080;
+            margin-bottom: 12px;
+        }
+        .timeline-circle.filled {
+            background-color: #000080;
+        }
+        .timeline-square {
+            width: 34px;
+            height: 34px;
+            border-radius: 6px; 
+            background-color: #000080;
+            margin-bottom: 12px;
+        }
+        .timeline-step-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1a3a6d;
+            text-align: center;
+            line-height: 1.3;
+        }
+        .timeline-step-subtitle {
+            font-size: 10px;
+            color: #666;
+            text-align: center;
+            margin-top: 4px;
+            line-height: 1.2;
+        }
     </style>
 
 </head>
@@ -1303,16 +1373,44 @@
                                 </div>
 
                                 <div class="visa-card" onclick="selectValidity('5', this)" style="height: 80px;">
-
                                     <strong>5 Years</strong>
-
                                 </div>
-
                             </div>
-
                         </div>
 
-
+                        <div id="mrep-timeline-ui" class="timeline-container">
+                            <div class="timeline-title">Plan Your Extensions (MREP Stay Cycle)</div>
+                            <div class="timeline-track">
+                                <div class="timeline-line-bg"></div>
+                                <div class="timeline-line-fill"></div>
+                                
+                                <div class="timeline-step">
+                                    <div class="timeline-circle filled"></div>
+                                    <div class="timeline-step-title">Day 1</div>
+                                    <div class="timeline-step-subtitle">Initial Entry</div>
+                                </div>
+                                <div class="timeline-step">
+                                    <div class="timeline-circle filled"></div>
+                                    <div class="timeline-step-title">60 Days</div>
+                                    <div class="timeline-step-subtitle">(0X Extension)</div>
+                                </div>
+                                <div class="timeline-step">
+                                    <div class="timeline-circle"></div>
+                                    <div class="timeline-step-title">120 Days</div>
+                                    <div class="timeline-step-subtitle">(1X Extension)</div>
+                                </div>
+                                <div class="timeline-step">
+                                    <div class="timeline-circle"></div>
+                                    <div class="timeline-step-title">180 Days</div>
+                                    <div class="timeline-step-subtitle">(2X Extension)</div>
+                                </div>
+                                <div class="timeline-step">
+                                    <div class="timeline-square"></div>
+                                    <div class="timeline-step-title">Day - 720</div>
+                                    <div class="timeline-step-subtitle">(2 Year Validity)</div>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="form-row" id="extensions-dropdown-row">
 
@@ -1924,13 +2022,12 @@
 
            
 
-            // Sembunyikan grup perpanjangan D jika user ganti tipe visa
-
+            // Sembunyikan grup perpanjangan D dan Timeline jika user ganti tipe visa
             const dExtensionGroup = document.getElementById('d-extension-group');
-
             if (dExtensionGroup) dExtensionGroup.style.display = 'none';
-
-           
+            
+            const mrepTimeline = document.getElementById('mrep-timeline-ui');
+            if (mrepTimeline) mrepTimeline.style.display = 'none';
 
             // Reset visibility dropdown extensions (Munculkan untuk A, B, C. Sembunyikan untuk D)
 
@@ -2040,18 +2137,15 @@
 
                    
 
-                    // Sembunyikan jika durasi awal 30 Hari, ATAU memilih D8
-
+                   // Sembunyikan jika durasi awal 30 Hari, ATAU memilih D8
+                    const mrepTimeline = document.getElementById('mrep-timeline-ui');
                     if (subtypeD === '30' || extD === 'D8') {
-
                         validityGroup.style.display = 'none';
-
-                        document.getElementById('visa-validity').value = ""; // Reset nilainya untuk keamanan
-
+                        if (mrepTimeline) mrepTimeline.style.display = 'none';
+                        document.getElementById('visa-validity').value = ""; 
                     } else {
-
                         validityGroup.style.display = 'block';
-
+                        if (mrepTimeline) mrepTimeline.style.display = 'block'; // Munculkan Timeline
                     }
 
                 } else {
