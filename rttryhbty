@@ -511,6 +511,10 @@
         .timeline-circle.filled {
             background-color: #000080;
         }
+        .timeline-circle.dashed {
+            border-style: dashed;
+            background-color: transparent;
+        }
         .timeline-square {
             width: 34px;
             height: 34px;
@@ -880,7 +884,7 @@
         }
     }
 
-    // --- FUNGSI UNTUK TOMBOL PERPANJANGAN KHUSUS VISA D ---
+    // --- FUNGSI GLOBAL BARU UNTUK KARTU EKTENSI D ---
     window.setExtension = function(value, element) {
         document.getElementById('extensions').value = value;
         const container = element.parentElement;
@@ -888,7 +892,7 @@
         allCards.forEach(card => card.classList.remove('selected'));
         element.classList.add('selected');
         
-        // Komando update garis biru di timeline secara real-time jika ada
+        window.futureTripsCount = 0; // Reset trip tambahan saat ganti ekstensi awal
         if (typeof renderMrepTimeline === "function") {
             renderMrepTimeline();
         }
