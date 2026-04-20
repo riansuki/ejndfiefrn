@@ -900,17 +900,17 @@
         }
     }
 
-    // --- FUNGSI UTAMA MENGGAMBAR TIMELINE MREP ---
+    // --- FUNGSI MENGGAMBAR TIMELINE MREP ---
     window.renderMrepTimeline = function() {
         const subtypeD = document.getElementById('d-visa-subtype').value;
         const extDStr = document.getElementById('extensions').value;
         const validity = document.getElementById('visa-validity').value;
+        const entryDateStr = document.getElementById('entry-date').value; // Mengambil tanggal input user
         const mrepTimeline = document.getElementById('mrep-timeline-ui');
         const trackContainer = document.getElementById('mrep-timeline-track');
-
         if (!mrepTimeline || !trackContainer) return;
 
-        // Sembunyikan jika bukan tipe MREP yang bisa diperpanjang atau validity belum dipilih
+        // Sembunyikan jika tidak valid
         if (!validity || subtypeD === '30' || extDStr === 'D8') {
             mrepTimeline.style.display = 'none';
             return;
@@ -918,67 +918,69 @@
 
         mrepTimeline.style.display = 'block';
         const extD = parseInt(extDStr) || 0;
-        const validityYears = parseInt(validity);
-        let validityLimitDays = validityYears * 360;
+        let validityDays = parseInt(validity) * 360; // Asumsi 1 tahun = 360 hari agar sesuai 'Day - 720'
 
-        // 1. Tentukan Titik Awal (Index) berdasarkan pilihan di Halaman 1
-        // Jika 60 hari: 0ext=60(idx1), 1ext=120(idx2), 2ext=180(idx3)
-        // Jika 180 hari: 0ext=180(idx3), 1ext=360(idx6 - jika 1thn, maka mentok)
-        let base = parseInt(subtypeD);
-        let initialDays = base + (extD * (base === 180 ? 180 : 60));
-        let initialIndex = Math.min(6, Math.floor(initialDays / 60));
-
-        // Tentukan titik aktif saat ini (menggunakan index manual jika pernah di-klik)
-        if (typeof window.mrepManualActiveIndex === 'undefined') {
-            window.mrepActiveIndex = initialIndex;
-        } else {
-            // Pastikan tidak lebih kecil dari pilihan di halaman 1
-            window.mrepActiveIndex = Math.max(window.mrepManualActiveIndex, initialIndex);
+        // FUNGSI PENGHITUNG TANGGAL (Berdasarkan input user)
+        let baseDate = new Date(entryDateStr + 'T00:00:00');
+        function getFormattedDate(daysAdded) {
+            if (!entryDateStr) return ""; // Kosongkan visual tanggal jika user belum pilih tanggal di Halaman 2
+            let d = new Date(baseDate);
+            let add = daysAdded === 1 ? 0 : daysAdded; // Day 1 = penambahan 0 hari
+            d.setDate(d.getDate() + add);
+            return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
         }
 
-        // 2. Susun Data 7 Node (Day 1 + 5 Lingkaran + 1 Kotak)
-        let steps = [
-            { title: 'Day 1', sub: 'Initial Entry' }, // Index 0
-            { title: '60 Days', sub: '(0X Extension)' }, // Index 1
-            { title: '120 Days', sub: '(1X Extension)' }, // Index 2
-            { title: '180 Days', sub: '(2X Extension)' }, // Index 3
-            { title: '240 Days', sub: 'Future Stay' },     // Index 4
-            { title: '300 Days', sub: 'Future Stay' },     // Index 5
-            { title: 'Day - ' + validityLimitDays, sub: '(' + validityYears + ' Year Validity)', type: 'square' } // Index 6
-        ];
+        let steps = [];
+        if (subtypeD === '60') {
+            steps = [
+                { title: 'Day - 1', sub: 'Initial Entry', extVal: '0', days: 1 },
+                { title: 'Day - 60', sub: '(0X Extension)', extVal: '0', days: 60 },
+                { title: 'Day - 120', sub: '(1X Extension)', extVal: '1', days: 120 },
+                { title: 'Day - 180', sub: '(2X Extension)', extVal: '2', days: 180 },
+                { title: `Day - ${validityDays}`, sub: `(${validity} Year Validity)`, isSquare: true, days: validityDays }
+            ];
+        } else if (subtypeD === '180') {
+            steps = [
+                { title: 'Day - 1', sub: 'Initial Entry', extVal: '0', days: 1 },
+                { title: 'Day - 180', sub: '(0X Extension)', extVal: '0', days: 180 },
+                { title: 'Day - 360', sub: '(1X Extension)', extVal: '1', days: 360 },
+                { title: `Day - ${validityDays}`, sub: `(${validity} Year Validity)`, isSquare: true, days: validityDays }
+            ];
+        }
 
-        // 3. Kalkulasi Lebar Garis Biru (Ada 6 ruas/segments)
-        let fillWidth = (window.mrepActiveIndex / 6) * 100;
+        let fillSegments = extD + 1;
+        // Jika extD 0, ruas biru sampai step ke-1
+        let totalSegments = steps.length - 1;
+        let fillWidth = (fillSegments / totalSegments) * 100;
 
         let html = `
-            <div class="timeline-line-container">
-                <div class="timeline-line-bg"></div>
-                <div class="timeline-line-fill" style="width: ${fillWidth}%;"></div>
-            </div>
+            <div class="timeline-line-bg"></div>
+            <div class="timeline-line-fill" style="width: ${fillWidth}%;"></div>
         `;
-
-        // 4. Render Titik-titik
         steps.forEach((step, index) => {
-            let isFilled = index <= window.mrepActiveIndex;
-            let nodeClass = step.type === 'square' ? 'timeline-square' : 'timeline-circle';
+            let isFilled = index <= fillSegments;
+            let circleClass = 'timeline-circle';
             
-            if (isFilled) {
-                nodeClass += ' filled';
-            } else if (step.type !== 'square') {
-                nodeClass += ' dashed';
+            if (step.isSquare) {
+                circleClass = 'timeline-square';
+            } else if (isFilled) {
+                circleClass = 'timeline-circle filled';
             }
             
-            // Titik bisa diklik hanya jika posisinya setelah titik awal dari halaman 1
-            let clickAttr = (index > initialIndex && index < 6) ? `onclick="updateMrepTimeline(${index})"` : '';
+            // Klik untuk update ekstensi
+            let clickAttr = !step.isSquare ? `onclick="setExtensionFromTimeline('${step.extVal}')"` : '';
+            
+            // Kalkulasi format visual tanggal dari fungsi pembantu di atas
+            let dateStr = getFormattedDate(step.days);
             
             html += `
             <div class="timeline-step" ${clickAttr}>
-                <div class="${nodeClass}"></div>
+                <div style="position: absolute; top: -22px; width: 100%; text-align: center; font-size: 10px; font-weight: 700; color: #1a3a6d; white-space: nowrap;">${dateStr}</div>
+                <div class="${circleClass}"></div>
                 <div class="timeline-step-title">${step.title}</div>
                 <div class="timeline-step-subtitle">${step.sub}</div>
             </div>`;
         });
-
         trackContainer.innerHTML = html;
     }
 
