@@ -884,7 +884,7 @@
         }
     }
 
-  // --- FUNGSI GLOBAL BARU UNTUK KARTU EKSTENSI D ---
+ // --- FUNGSI GLOBAL BARU UNTUK KARTU EKSTENSI D ---
     window.setExtension = function(value, element) {
         document.getElementById('extensions').value = value;
         const container = element.parentElement;
@@ -892,13 +892,15 @@
         allCards.forEach(card => card.classList.remove('selected'));
         element.classList.add('selected');
         
-        window.futureStaysCount = 0; // Reset trip tambahan saat ganti ekstensi awal
+        // Reset manual click timeline jika user mengubah pilihan di halaman 1
+        delete window.mrepManualActiveIndex;
+        
         if (typeof renderMrepTimeline === "function") {
             renderMrepTimeline();
         }
     }
 
-    // --- FUNGSI MENGGAMBAR TIMELINE MREP (LOGIKA FUTURE STAYS) ---
+    // --- FUNGSI UTAMA MENGGAMBAR TIMELINE MREP ---
     window.renderMrepTimeline = function() {
         const subtypeD = document.getElementById('d-visa-subtype').value;
         const extDStr = document.getElementById('extensions').value;
@@ -908,7 +910,7 @@
 
         if (!mrepTimeline || !trackContainer) return;
 
-        // Sembunyikan jika syarat tidak terpenuhi
+        // Sembunyikan jika bukan tipe MREP yang bisa diperpanjang atau validity belum dipilih
         if (!validity || subtypeD === '30' || extDStr === 'D8') {
             mrepTimeline.style.display = 'none';
             return;
@@ -917,52 +919,37 @@
         mrepTimeline.style.display = 'block';
         const extD = parseInt(extDStr) || 0;
         const validityYears = parseInt(validity);
-        let validityLimitDays = validityYears * 360; // Asumsi 1 tahun = 360 hari (Day - 720, dst)
+        let validityLimitDays = validityYears * 360;
 
-        // 1. Hitung durasi total stay pertama (Initial Entry)
+        // 1. Tentukan Titik Awal (Index) berdasarkan pilihan di Halaman 1
+        // Jika 60 hari: 0ext=60(idx1), 1ext=120(idx2), 2ext=180(idx3)
+        // Jika 180 hari: 0ext=180(idx3), 1ext=360(idx6 - jika 1thn, maka mentok)
         let base = parseInt(subtypeD);
-        let extUnit = (subtypeD === '60') ? 60 : 180;
-        let totalFirstStay = base + (extD * extUnit);
+        let initialDays = base + (extD * (base === 180 ? 180 : 60));
+        let initialIndex = Math.min(6, Math.floor(initialDays / 60));
 
-        // Pastikan variabel state untuk klik masa depan sudah siap
-        if (typeof window.futureStaysCount === 'undefined') window.futureStaysCount = 0;
-
-        // 2. Siapkan Node Dasar (Day 1 nyambung langsung ke First Stay)
-        let steps = [
-            { title: 'Day 1', sub: 'Initial Entry', type: 'filled' },
-            { title: totalFirstStay + ' Days', sub: 'First Stay', type: 'filled' }
-        ];
-
-        // 3. Tambahkan Node Putus-Putus untuk Future Stays
-        let futureNodes = (subtypeD === '60') ? 3 : 2;
-        let maxStayPerTrip = (subtypeD === '60') ? 180 : 360; 
-        
-        for (let i = 1; i <= futureNodes; i++) {
-            let isActivated = i <= window.futureStaysCount;
-            // Trip berikutnya menambah durasi maksimum per entry
-            let nextDayValue = totalFirstStay + (i * maxStayPerTrip);
-            
-            // Batasi hari agar tidak lewat dari Masa Berlaku
-            if (nextDayValue > validityLimitDays) nextDayValue = validityLimitDays;
-
-            steps.push({
-                title: isActivated ? nextDayValue + ' Days' : 'Plan Trip',
-                sub: isActivated ? 'Trip ' + (i + 1) : 'Future Stay',
-                type: isActivated ? 'filled' : 'dashed',
-                clickable: true,
-                clickIdx: i
-            });
+        // Tentukan titik aktif saat ini (menggunakan index manual jika pernah di-klik)
+        if (typeof window.mrepManualActiveIndex === 'undefined') {
+            window.mrepActiveIndex = initialIndex;
+        } else {
+            // Pastikan tidak lebih kecil dari pilihan di halaman 1
+            window.mrepActiveIndex = Math.max(window.mrepManualActiveIndex, initialIndex);
         }
 
-        // 4. Tambahkan Kotak Ujung (Batas Masa Berlaku)
-        steps.push({ title: 'Day - ' + validityLimitDays, sub: '(' + validityYears + ' Year Validity)', type: 'square' });
+        // 2. Susun Data 7 Node (Day 1 + 5 Lingkaran + 1 Kotak)
+        let steps = [
+            { title: 'Day 1', sub: 'Initial Entry' }, // Index 0
+            { title: '60 Days', sub: '(0X Extension)' }, // Index 1
+            { title: '120 Days', sub: '(1X Extension)' }, // Index 2
+            { title: '180 Days', sub: '(2X Extension)' }, // Index 3
+            { title: '240 Days', sub: 'Future Stay' },     // Index 4
+            { title: '300 Days', sub: 'Future Stay' },     // Index 5
+            { title: 'Day - ' + validityLimitDays, sub: '(' + validityYears + ' Year Validity)', type: 'square' } // Index 6
+        ];
 
-        // 5. Kalkulasi Lebar Garis Biru
-        let totalSegments = steps.length - 1;
-        let activeSegments = 1 + window.futureStaysCount; // Jarak dari Day 1 ke First Stay selalu diisi
-        let fillWidth = (activeSegments / totalSegments) * 100;
+        // 3. Kalkulasi Lebar Garis Biru (Ada 6 ruas/segments)
+        let fillWidth = (window.mrepActiveIndex / 6) * 100;
 
-        // 6. Output HTML
         let html = `
             <div class="timeline-line-container">
                 <div class="timeline-line-bg"></div>
@@ -970,16 +957,22 @@
             </div>
         `;
 
-        steps.forEach((step) => {
-            let nodeClass = 'timeline-circle';
-            if (step.type === 'filled') nodeClass += ' filled';
-            if (step.type === 'dashed') nodeClass += ' dashed';
-            if (step.type === 'square') nodeClass = 'timeline-square';
+        // 4. Render Titik-titik
+        steps.forEach((step, index) => {
+            let isFilled = index <= window.mrepActiveIndex;
+            let nodeClass = step.type === 'square' ? 'timeline-square' : 'timeline-circle';
             
-            let clickAction = step.clickable ? `onclick="toggleFutureStay(${step.clickIdx})"` : '';
+            if (isFilled) {
+                nodeClass += ' filled';
+            } else if (step.type !== 'square') {
+                nodeClass += ' dashed';
+            }
+            
+            // Titik bisa diklik hanya jika posisinya setelah titik awal dari halaman 1
+            let clickAttr = (index > initialIndex && index < 6) ? `onclick="updateMrepTimeline(${index})"` : '';
             
             html += `
-            <div class="timeline-step" ${clickAction}>
+            <div class="timeline-step" ${clickAttr}>
                 <div class="${nodeClass}"></div>
                 <div class="timeline-step-title">${step.title}</div>
                 <div class="timeline-step-subtitle">${step.sub}</div>
@@ -989,13 +982,13 @@
         trackContainer.innerHTML = html;
     }
 
-    // --- FUNGSI INTERAKTIF KLIK TITIK PUTUS-PUTUS ---
-    window.toggleFutureStay = function(idx) {
-        // Jika user klik titik biru terakhir, batalkan (unfill)
-        if (window.futureStaysCount === idx) {
-            window.futureStaysCount = idx - 1;
+    // --- FUNGSI INTERAKSI KLIK PADA TIMELINE ---
+    window.updateMrepTimeline = function(index) {
+        // Jika mengklik titik yang sudah biru, maka mundur satu langkah
+        if (window.mrepActiveIndex === index) {
+            window.mrepManualActiveIndex = index - 1;
         } else {
-            window.futureStaysCount = idx;
+            window.mrepManualActiveIndex = index;
         }
         renderMrepTimeline();
     }
@@ -1008,9 +1001,9 @@
         allCards.forEach(card => card.classList.remove('selected'));
         element.classList.add('selected');
         
-        window.futureStaysCount = 0; // Reset rencana trip tiap kali pilih tahun baru
+        // Reset rencana manual setiap kali ganti masa berlaku
+        delete window.mrepManualActiveIndex;
         
-        // Memunculkan dan merender Timeline MREP
         const mrepTimeline = document.getElementById('mrep-timeline-ui');
         if (mrepTimeline) {
             mrepTimeline.style.display = 'block';
