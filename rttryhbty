@@ -1188,23 +1188,18 @@
             }
 
             const validityGroup = document.getElementById('validity-group');
+            const entryDateInput = document.getElementById('entry-date');
+
             if (validityGroup) {
                 if (visaTypeSelect.value === 'visaD') {
                     const subtypeD = document.getElementById('d-visa-subtype').value;
                     const extD = document.getElementById('extensions').value;
-                    const mrepTimeline = document.getElementById('mrep-timeline-ui');
                     
                     if (subtypeD === '30' || extD === 'D8') {
                         validityGroup.style.display = 'none';
-                        if (mrepTimeline) mrepTimeline.style.display = 'none';
-                        document.getElementById('visa-validity').value = ""; 
                     } else {
-                        validityGroup.style.display = 'block';
-                        if (mrepTimeline && document.getElementById('visa-validity').value === "") {
-                            mrepTimeline.style.display = 'none';
-                        } else if (mrepTimeline) {
-                            renderMrepTimeline();
-                        }
+                        // HANYA munculkan jika Entry Date sudah diisi
+                        validityGroup.style.display = entryDateInput.value ? 'block' : 'none';
                     }
                 } else {
                     validityGroup.style.display = 'none';
@@ -1225,6 +1220,20 @@
             visaStep.style.display = 'block';
             resultsContainer.classList.remove('active'); 
             window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Reset Entry Date saat tombol back diklik
+            const entryDateInput = document.getElementById('entry-date');
+            if (entryDateInput) {
+                entryDateInput.value = '';
+                // Memicu event 'change' agar tombol Masa Berlaku otomatis kembali terkunci (sembunyi)
+                entryDateInput.dispatchEvent(new Event('change')); 
+            }
+
+            // Opsional tapi disarankan: Reset juga Planned Exit Date agar benar-benar bersih
+            const exitDateInput = document.getElementById('exit-date');
+            if (exitDateInput) {
+                exitDateInput.value = '';
+            }
         });
 
         voaLink.addEventListener('click', function(e) {
@@ -1408,7 +1417,50 @@
 
             resultsContainer.classList.add('active');
         }
+        // LOGIKA KUNCI: Munculkan Masa Berlaku saat Entry Date terisi
+        document.getElementById('entry-date').addEventListener('change', function() {
+            const visaType = visaTypeSelect.value;
+            const subtypeD = document.getElementById('d-visa-subtype').value;
+            const extD = document.getElementById('extensions').value;
+            const validityGroup = document.getElementById('validity-group');
+            const mrepTimeline = document.getElementById('mrep-timeline-ui');
+
+            if (visaType === 'visaD' && subtypeD !== '30' && extD !== 'D8') {
+                if (this.value) {
+                    validityGroup.style.display = 'block';
+                } else {
+                    validityGroup.style.display = 'none';
+                    if (mrepTimeline) mrepTimeline.style.display = 'none';
+                    // Reset pilihan validity jika tanggal dikosongkan
+                    document.getElementById('visa-validity').value = "";
+                    validityGroup.querySelectorAll('.visa-card').forEach(card => card.classList.remove('selected'));
+                }
+            }
+        });
     });
+
+// Logika untuk membuka kunci Masa Berlaku setelah Entry Date diisi
+        document.getElementById('entry-date').addEventListener('change', function() {
+            const visaType = visaTypeSelect.value;
+            const validityGroup = document.getElementById('validity-group');
+            const mrepTimeline = document.getElementById('mrep-timeline-ui');
+            const subtypeD = document.getElementById('d-visa-subtype').value;
+            const extD = document.getElementById('extensions').value;
+
+            // Hanya berlaku untuk Visa D yang bisa diperpanjang
+            if (visaType === 'visaD' && subtypeD !== '30' && extD !== 'D8') {
+                if (this.value) {
+                    validityGroup.style.display = 'block';
+                } else {
+                    validityGroup.style.display = 'none';
+                    if (mrepTimeline) mrepTimeline.style.display = 'none';
+                    // Reset pilihan validity jika tanggal dihapus
+                    document.getElementById('visa-validity').value = "";
+                    validityGroup.querySelectorAll('.visa-card').forEach(card => card.classList.remove('selected'));
+                }
+            }
+        });
+
    </script>
 </body>
 </html>
