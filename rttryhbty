@@ -973,7 +973,7 @@
         originalSetExtension(value, element);
     }
 
-    window.renderMrepTimeline = function() {
+   window.renderMrepTimeline = function() {
         const subtypeD = document.getElementById('d-visa-subtype').value;
         const extDStr = document.getElementById('extensions').value;
         const validity = document.getElementById('visa-validity').value;
@@ -1003,7 +1003,8 @@
         let currentTotal = firstStayTotal;
         window.additionalTrips.forEach((duration, idx) => {
             currentTotal += duration;
-            if (currentTotal < validityLimitDays) {
+            // PERBAIKAN: Gunakan <= agar jika pas menyentuh batas (misal 360) tetap dirender
+            if (currentTotal <= validityLimitDays) {
                 steps.push({ days: currentTotal, sub: `Trip ${idx + 2}`, type: 'filled' });
             }
         });
@@ -1044,7 +1045,7 @@
             </div>`;
         }
 
-        // Tambahkan Kotak Akhir (Cek apakah harinya sudah mentok)
+        // PERBAIKAN: Tambahkan Kotak Akhir (Otomatis Filled jika sudah mentok batas validity)
         let squareClass = (currentTotal >= validityLimitDays) ? "timeline-square filled" : "timeline-square";
         
         html += `
@@ -1077,7 +1078,7 @@
             currentTotal += duration;
         });
 
-        // 2. Sembunyikan opsi yang membuat hari melewati/menyentuh batas Limit
+        // 2. Sembunyikan opsi yang membuat hari melewati batas Limit
         const popup = document.getElementById('mrep-popup');
         const options = popup.querySelectorAll('.popup-option');
         const durations = [180, 120, 60]; // Sesuai urutan di HTML Popup Anda
@@ -1086,7 +1087,9 @@
 
         durations.forEach((val, index) => {
             if (options[index]) {
-                if ((currentTotal + val) >= validityLimitDays) {
+                // PERBAIKAN LOGIKA: Hanya sembunyikan jika ketambahannya LEBIH BESAR (>) dari limit
+                // Jika hasilnya PAS / SAMA DENGAN (=) limit, opsi TETAP dimunculkan.
+                if ((currentTotal + val) > validityLimitDays) {
                     options[index].style.display = 'none'; // Sembunyikan opsi
                 } else {
                     options[index].style.display = 'block'; // Tampilkan opsi
@@ -1105,10 +1108,12 @@
         document.getElementById('mrep-overlay').style.display = 'block';
         document.getElementById('mrep-popup').style.display = 'block';
     };
+    
     window.closeMrepPopup = () => {
         document.getElementById('mrep-overlay').style.display = 'none';
         document.getElementById('mrep-popup').style.display = 'none';
     };
+    
     window.addMrepTrip = (duration) => {
         window.additionalTrips.push(duration);
         closeMrepPopup();
