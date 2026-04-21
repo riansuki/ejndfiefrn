@@ -1050,14 +1050,41 @@
         
         html += `
         <div class="timeline-step">
+            <div style="position: absolute; top: -22px; width: 100%; text-align: center; font-size: 10px; font-weight: 700; color: #1a3a6d; white-space: nowrap;">${getFmtDate(validityLimitDays)}</div>
             <div class="${squareClass}"></div>
             <div class="timeline-step-title">Day - ${validityLimitDays}</div>
             <div class="timeline-step-subtitle">(${validityYears} Year Validity)</div>
         </div>`;
 
         trackContainer.innerHTML = html;
-        // Atur lebar track agar bisa scroll jika terlalu panjang (infinite)
-        trackContainer.style.minWidth = (steps.length * 120 + 200) + "px";
+
+        // --- LOGIKA BARU: AUTO-SCALE AGAR SEMUA TITIK MUAT DI LAYAR ---
+        // 1. Tentukan lebar ideal yang dibutuhkan (misal 85px per titik) agar tidak saling berdesakan
+        let requiredWidth = steps.length * 85; 
+        
+        // 2. Ambil lebar maksimal yang tersedia di kontainer utama (dikurangi padding 40px)
+        let parentWidth = mrepTimeline.clientWidth - 40; 
+        
+        // 3. Jika ruang yang dibutuhkan melebihi layar yang tersedia, kita kecilkan bentuknya (scale down)
+        if (requiredWidth > parentWidth && parentWidth > 0) {
+            let scaleRatio = parentWidth / requiredWidth;
+            
+            // Tetapkan minWidth agar jarak antar titik stabil, lalu kecilkan total tampilannya
+            trackContainer.style.minWidth = requiredWidth + "px";
+            trackContainer.style.transform = `scale(${scaleRatio})`;
+            trackContainer.style.transformOrigin = "left top";
+            
+            // Pangkas margin bawah agar tidak ada ruang putih kosong yang tersisa akibat pengecilan
+            let trackHeight = trackContainer.offsetHeight || 100;
+            let emptySpace = trackHeight * (1 - scaleRatio);
+            trackContainer.style.marginBottom = `-${emptySpace}px`;
+        } else {
+            // Reset ke ukuran normal jika masih muat (titik belum terlalu banyak)
+            trackContainer.style.minWidth = "100%";
+            trackContainer.style.transform = "none";
+            trackContainer.style.marginBottom = "0px";
+        }
+    
     };
 
     // Fungsi Popup Actions
