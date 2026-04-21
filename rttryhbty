@@ -450,7 +450,7 @@
 
         /* --- GAYA DESAIN TIMELINE MREP --- */
         .timeline-container {
-            display: none; /* Sembunyikan secara default */
+            display: none; 
             background: #fff;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
@@ -486,7 +486,7 @@
             top: 15px;
             left: 40px;
             height: 4px;
-            background-color: #000080; /* Warna biru gelap */
+            background-color: #000080; 
             z-index: 2;
             transition: width 0.4s ease;
         }
@@ -507,9 +507,6 @@
             border: 4px solid #000080;
             margin-bottom: 12px;
             transition: all 0.3s ease;
-        }
-        .timeline-circle.filled {
-            background-color: #000080;
         }
         .timeline-circle.filled {
             background-color: #000080;
@@ -568,12 +565,17 @@
             border-style: dashed;
             background-color: transparent;
         }
-        .timeline-square {
+       .timeline-square {
             width: 34px;
             height: 34px;
             border-radius: 6px; 
-            background-color: #000080;
+            background-color: #fff;
+            border: 4px solid #000080;
             margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        .timeline-square.filled {
+            background-color: #000080;
         }
         .timeline-step-title {
             font-size: 12px;
@@ -1042,10 +1044,12 @@
             </div>`;
         }
 
-        // Tambahkan Kotak Akhir
+        // Tambahkan Kotak Akhir (Cek apakah harinya sudah mentok)
+        let squareClass = (currentTotal >= validityLimitDays) ? "timeline-square filled" : "timeline-square";
+        
         html += `
         <div class="timeline-step">
-            <div class="timeline-square"></div>
+            <div class="${squareClass}"></div>
             <div class="timeline-step-title">Day - ${validityLimitDays}</div>
             <div class="timeline-step-subtitle">(${validityYears} Year Validity)</div>
         </div>`;
@@ -1057,6 +1061,47 @@
 
     // Fungsi Popup Actions
     window.showMrepPopup = () => {
+        const validity = document.getElementById('visa-validity').value;
+        const subtypeD = document.getElementById('d-visa-subtype').value;
+        const extDStr = document.getElementById('extensions').value;
+        
+        if (!validity) return;
+        
+        const validityLimitDays = parseInt(validity) * 360;
+        const base = parseInt(subtypeD);
+        const extD = parseInt(extDStr) || 0;
+        
+        // 1. Hitung total hari yang sudah direncakanan saat ini
+        let currentTotal = base + (extD * (base === 180 ? 180 : 60));
+        window.additionalTrips.forEach(duration => {
+            currentTotal += duration;
+        });
+
+        // 2. Sembunyikan opsi yang membuat hari melewati/menyentuh batas Limit
+        const popup = document.getElementById('mrep-popup');
+        const options = popup.querySelectorAll('.popup-option');
+        const durations = [180, 120, 60]; // Sesuai urutan di HTML Popup Anda
+        
+        let availableOptionsCount = 0;
+
+        durations.forEach((val, index) => {
+            if (options[index]) {
+                if ((currentTotal + val) >= validityLimitDays) {
+                    options[index].style.display = 'none'; // Sembunyikan opsi
+                } else {
+                    options[index].style.display = 'block'; // Tampilkan opsi
+                    availableOptionsCount++;
+                }
+            }
+        });
+
+        // 3. Jika semua opsi disembunyikan (karena semuanya melewati batas limit)
+        if (availableOptionsCount === 0) {
+            alert("Rencana perjalanan Anda sudah mencapai batas maksimal masa berlaku visa.");
+            return; // Jangan buka popup
+        }
+
+        // Buka popup jika masih ada opsi yang tersedia
         document.getElementById('mrep-overlay').style.display = 'block';
         document.getElementById('mrep-popup').style.display = 'block';
     };
@@ -1089,8 +1134,7 @@
         allCards.forEach(card => card.classList.remove('selected'));
         element.classList.add('selected');
         
-        // Reset rencana manual setiap kali ganti masa berlaku
-        delete window.mrepManualActiveIndex;
+        window.additionalTrips = []; // Reset rencana manual setiap kali ganti masa berlaku
         
         const mrepTimeline = document.getElementById('mrep-timeline-ui');
         if (mrepTimeline) {
