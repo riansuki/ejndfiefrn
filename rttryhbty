@@ -973,7 +973,8 @@
         originalSetExtension(value, element);
     }
 
-   window.renderMrepTimeline = function() {
+   // --- FUNGSI MENGGAMBAR TIMELINE MREP ---
+    window.renderMrepTimeline = function() {
         const subtypeD = document.getElementById('d-visa-subtype').value;
         const extDStr = document.getElementById('extensions').value;
         const validity = document.getElementById('visa-validity').value;
@@ -1003,8 +1004,9 @@
         let currentTotal = firstStayTotal;
         window.additionalTrips.forEach((duration, idx) => {
             currentTotal += duration;
-            // PERBAIKAN: Gunakan <= agar jika pas menyentuh batas (misal 360) tetap dirender
-            if (currentTotal <= validityLimitDays) {
+            // PERBAIKAN: Gunakan < (Hanya lebih kecil). 
+            // Jika hasilnya sama dengan limit (misal 360), lingkaran tidak usah dibuat.
+            if (currentTotal < validityLimitDays) {
                 steps.push({ days: currentTotal, sub: `Trip ${idx + 2}`, type: 'filled' });
             }
         });
@@ -1018,13 +1020,28 @@
             return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
         };
 
-        // Render HTML
-        let html = `<div class="timeline-line-bg"></div>`;
-        // Garis biru selalu menghubungkan Day 1 ke titik terakhir yang aktif
-        let totalSegments = steps.length; // Ditambah 1 untuk tombol plus dan 1 untuk kotak akhir
-        let fillWidth = (steps.length / (steps.length + 1)) * 100;
-        html += `<div class="timeline-line-fill" style="width: ${fillWidth}%;"></div>`;
+        // --- LOGIKA GARIS BIRU (FILL LINE) YANG DISEMPURNAKAN ---
+        let hasPlusButton = currentTotal < validityLimitDays;
+        let domElementsCount = steps.length + (hasPlusButton ? 1 : 0) + 1; // Total semua titik + kotak akhir
+        let fillWidth = 0;
+        
+        if (currentTotal >= validityLimitDays) {
+            fillWidth = 100; // Jika mentok, garis biru langsung penuh 100% menabrak kotak akhir
+        } else {
+            // Jika belum mentok, garis biru berhenti di titik lingkaran terakhir
+            fillWidth = ((steps.length - 1) / (domElementsCount - 1)) * 100;
+        }
 
+       let html = `<div class="timeline-line-bg"></div>`;
+        
+        // PERBAIKAN: Membungkus garis biru dalam area yang sejajar dengan garis abu-abu (right: 40px).
+        // Ini memastikan saat 100%, garis biru akan berhenti pas dan rapi bersembunyi di belakang kotak terakhir.
+        html += `
+        <div style="position: absolute; top: 15px; left: 40px; right: 40px; height: 4px; z-index: 2;">
+            <div style="width: ${fillWidth}%; height: 100%; background-color: #000080; transition: width 0.4s ease;"></div>
+        </div>`;
+
+        // Render lingkaran (Hanya yang kurang dari batas limit)
         steps.forEach((step) => {
             html += `
             <div class="timeline-step">
@@ -1035,8 +1052,8 @@
             </div>`;
         });
 
-        // Tambahkan Tombol Plus jika belum mentok validity
-        if (currentTotal < validityLimitDays) {
+        // Tambahkan Tombol Plus jika belum mentok
+        if (hasPlusButton) {
             html += `
             <div class="timeline-step" onclick="showMrepPopup()">
                 <div class="timeline-circle plus-btn">+</div>
@@ -1045,7 +1062,7 @@
             </div>`;
         }
 
-        // PERBAIKAN: Tambahkan Kotak Akhir (Otomatis Filled jika sudah mentok batas validity)
+        // Tambahkan Kotak Akhir (Square)
         let squareClass = (currentTotal >= validityLimitDays) ? "timeline-square filled" : "timeline-square";
         
         html += `
@@ -1058,33 +1075,24 @@
 
         trackContainer.innerHTML = html;
 
-        // --- LOGIKA BARU: AUTO-SCALE AGAR SEMUA TITIK MUAT DI LAYAR ---
-        // 1. Tentukan lebar ideal yang dibutuhkan (misal 85px per titik) agar tidak saling berdesakan
-        let requiredWidth = steps.length * 85; 
-        
-        // 2. Ambil lebar maksimal yang tersedia di kontainer utama (dikurangi padding 40px)
+        // --- LOGIKA AUTO-SCALE ---
+        let requiredWidth = domElementsCount * 85; // Menghitung dari total elemen DOM, bukan hanya steps
         let parentWidth = mrepTimeline.clientWidth - 40; 
         
-        // 3. Jika ruang yang dibutuhkan melebihi layar yang tersedia, kita kecilkan bentuknya (scale down)
         if (requiredWidth > parentWidth && parentWidth > 0) {
             let scaleRatio = parentWidth / requiredWidth;
-            
-            // Tetapkan minWidth agar jarak antar titik stabil, lalu kecilkan total tampilannya
             trackContainer.style.minWidth = requiredWidth + "px";
             trackContainer.style.transform = `scale(${scaleRatio})`;
             trackContainer.style.transformOrigin = "left top";
             
-            // Pangkas margin bawah agar tidak ada ruang putih kosong yang tersisa akibat pengecilan
             let trackHeight = trackContainer.offsetHeight || 100;
             let emptySpace = trackHeight * (1 - scaleRatio);
             trackContainer.style.marginBottom = `-${emptySpace}px`;
         } else {
-            // Reset ke ukuran normal jika masih muat (titik belum terlalu banyak)
             trackContainer.style.minWidth = "100%";
             trackContainer.style.transform = "none";
             trackContainer.style.marginBottom = "0px";
         }
-    
     };
 
     // Fungsi Popup Actions
