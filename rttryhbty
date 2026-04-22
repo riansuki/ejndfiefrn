@@ -996,18 +996,27 @@
         // Hitung durasi awal (Day 1 ke Point 2)
         let firstStayTotal = base + (extD * (base === 180 ? 180 : 60));
 
-        // Buat Array Node
+        // Array untuk menyimpan angka durasi yang akan ditampilkan di tengah garis
+        let segmentDurations = [firstStayTotal]; 
+
+        // Buat Array Node Titik
         let steps = [{ days: 1, sub: 'Initial Entry', type: 'filled' }];
-        steps.push({ days: firstStayTotal, sub: 'First Stay', type: 'filled' });
+        
+        // LOGIKA BARU: Jika First Stay langsung mentok batas masa berlaku, JANGAN buat lingkaran ganda
+        if (firstStayTotal < validityLimitDays) {
+            steps.push({ days: firstStayTotal, sub: 'First Stay', type: 'filled' });
+        }
 
         // Tambahkan trip-trip dari hasil klik tombol Plus
         let currentTotal = firstStayTotal;
         window.additionalTrips.forEach((duration, idx) => {
             currentTotal += duration;
-            // PERBAIKAN: Gunakan < (Hanya lebih kecil). 
-            // Jika hasilnya sama dengan limit (misal 360), lingkaran tidak usah dibuat.
             if (currentTotal < validityLimitDays) {
                 steps.push({ days: currentTotal, sub: `Trip ${idx + 2}`, type: 'filled' });
+                segmentDurations.push(duration);
+            } else if (currentTotal === validityLimitDays) {
+                // LOGIKA BARU: Jika pas mentok, lingkaran jangan dibuat, tapi tetap simpan angka harinya untuk label garis
+                segmentDurations.push(duration);
             }
         });
 
@@ -1020,28 +1029,29 @@
             return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
         };
 
-        // --- LOGIKA GARIS BIRU (FILL LINE) YANG DISEMPURNAKAN ---
+        // --- HITUNG JUMLAH ELEMEN UNTUK KALKULASI POSISI GARIS & AUTO-SCALE ---
         let hasPlusButton = currentTotal < validityLimitDays;
-        let domElementsCount = steps.length + (hasPlusButton ? 1 : 0) + 1; // Total semua titik + kotak akhir
-        let fillWidth = 0;
-        
-        if (currentTotal >= validityLimitDays) {
-            fillWidth = 100; // Jika mentok, garis biru langsung penuh 100% menabrak kotak akhir
-        } else {
-            // Jika belum mentok, garis biru berhenti di titik lingkaran terakhir
-            fillWidth = ((steps.length - 1) / (domElementsCount - 1)) * 100;
-        }
+        let domElementsCount = steps.length + (hasPlusButton ? 1 : 0) + 1; 
+        let fillWidth = (currentTotal >= validityLimitDays) ? 100 : ((steps.length - 1) / (domElementsCount - 1)) * 100;
 
-       let html = `<div class="timeline-line-bg"></div>`;
-        
-        // PERBAIKAN: Membungkus garis biru dalam area yang sejajar dengan garis abu-abu (right: 40px).
-        // Ini memastikan saat 100%, garis biru akan berhenti pas dan rapi bersembunyi di belakang kotak terakhir.
+        // 1. Render Background & Garis Biru
+        let html = `<div class="timeline-line-bg"></div>`;
         html += `
         <div style="position: absolute; top: 15px; left: 40px; right: 40px; height: 4px; z-index: 2;">
             <div style="width: ${fillWidth}%; height: 100%; background-color: #000080; transition: width 0.4s ease;"></div>
         </div>`;
 
-        // Render lingkaran (Hanya yang kurang dari batas limit)
+        // 2. LOGIKA BARU: Render "Badge" Label Hari di Tengah-Tengah Garis Penghubung
+        segmentDurations.forEach((dur, i) => {
+            // Kalkulasi matematika presisi agar label berada 100% pas di tengah ruas antar-titik
+            let leftPos = `calc(40px + ((100% - 80px) / ${domElementsCount - 1}) * ${i + 0.5})`;
+            html += `
+            <div style="position: absolute; top: 17px; left: ${leftPos}; transform: translate(-50%, -50%); z-index: 4; background: #fff; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; color: #000080; border: 1px solid #000080; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                ${dur} Days
+            </div>`;
+        });
+
+        // 3. Render Titik Lingkaran
         steps.forEach((step) => {
             html += `
             <div class="timeline-step">
@@ -1052,7 +1062,7 @@
             </div>`;
         });
 
-        // Tambahkan Tombol Plus jika belum mentok
+        // 4. Tambahkan Tombol Plus jika belum mentok
         if (hasPlusButton) {
             html += `
             <div class="timeline-step" onclick="showMrepPopup()">
@@ -1062,7 +1072,7 @@
             </div>`;
         }
 
-        // Tambahkan Kotak Akhir (Square)
+        // 5. Tambahkan Kotak Akhir (Square)
         let squareClass = (currentTotal >= validityLimitDays) ? "timeline-square filled" : "timeline-square";
         
         html += `
@@ -1075,8 +1085,8 @@
 
         trackContainer.innerHTML = html;
 
-        // --- LOGIKA AUTO-SCALE ---
-        let requiredWidth = domElementsCount * 85; // Menghitung dari total elemen DOM, bukan hanya steps
+        // --- LOGIKA AUTO-SCALE (Tetap dipertahankan agar responsif) ---
+        let requiredWidth = domElementsCount * 85; 
         let parentWidth = mrepTimeline.clientWidth - 40; 
         
         if (requiredWidth > parentWidth && parentWidth > 0) {
