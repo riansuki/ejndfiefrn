@@ -1117,39 +1117,67 @@
         const base = parseInt(subtypeD);
         const extD = parseInt(extDStr) || 0;
         
-        // 1. Hitung total hari yang sudah direncakanan saat ini
+        // 1. Hitung total hari yang sudah direncanakan saat ini (Stay Awal + Perpanjangan + Trip tambahan)
         let currentTotal = base + (extD * (base === 180 ? 180 : 60));
         window.additionalTrips.forEach(duration => {
             currentTotal += duration;
         });
 
-        // 2. Sembunyikan opsi yang membuat hari melewati batas Limit
+        // 2. Dinamis Update Teks dan Nilai Opsi Popup berdasarkan Subtype (60 vs 180)
         const popup = document.getElementById('mrep-popup');
         const options = popup.querySelectorAll('.popup-option');
-        const durations = [180, 120, 60]; // Sesuai urutan di HTML Popup Anda
         
-        let availableOptionsCount = 0;
+        let durations = [];
+        if (base === 60) {
+            durations = [180, 120, 60];
+            if(options[0]) {
+                options[0].innerHTML = "180 Days (2x Extension)";
+                options[0].setAttribute('onclick', 'addMrepTrip(180)');
+            }
+            if(options[1]) {
+                options[1].innerHTML = "120 Days (1x Extension)";
+                options[1].setAttribute('onclick', 'addMrepTrip(120)');
+            }
+            if(options[2]) {
+                options[2].innerHTML = "60 Days (0x Extension)";
+                options[2].setAttribute('onclick', 'addMrepTrip(60)');
+                options[2].style.display = 'block';
+            }
+        } else if (base === 180) {
+            durations = [360, 180];
+            if(options[0]) {
+                options[0].innerHTML = "360 Days (1x Extension)";
+                options[0].setAttribute('onclick', 'addMrepTrip(360)');
+            }
+            if(options[1]) {
+                options[1].innerHTML = "180 Days (0x Extension)";
+                options[1].setAttribute('onclick', 'addMrepTrip(180)');
+            }
+            // Sembunyikan opsi ke-3 karena untuk 180 hanya ada 2 pilihan (0x & 1x)
+            if(options[2]) options[2].style.display = 'none'; 
+        }
 
+        // 3. Sembunyikan opsi yang membuat hari melewati batas Limit (Masa Berlaku)
+        let availableOptionsCount = 0;
         durations.forEach((val, index) => {
-            if (options[index]) {
-                // PERBAIKAN LOGIKA: Hanya sembunyikan jika ketambahannya LEBIH BESAR (>) dari limit
-                // Jika hasilnya PAS / SAMA DENGAN (=) limit, opsi TETAP dimunculkan.
+            if (options[index] && val > 0) {
+                // Gunakan operator > agar jika hasilnya tepat di batas (misal 360) tetap bisa dipilih
                 if ((currentTotal + val) > validityLimitDays) {
-                    options[index].style.display = 'none'; // Sembunyikan opsi
+                    options[index].style.display = 'none'; 
                 } else {
-                    options[index].style.display = 'block'; // Tampilkan opsi
+                    options[index].style.display = 'block'; 
                     availableOptionsCount++;
                 }
             }
         });
 
-        // 3. Jika semua opsi disembunyikan (karena semuanya melewati batas limit)
+        // 4. Jika semua opsi melampaui limit masa berlaku
         if (availableOptionsCount === 0) {
             alert("Rencana perjalanan Anda sudah mencapai batas maksimal masa berlaku visa.");
-            return; // Jangan buka popup
+            return; 
         }
 
-        // Buka popup jika masih ada opsi yang tersedia
+        // Tampilkan Popup
         document.getElementById('mrep-overlay').style.display = 'block';
         document.getElementById('mrep-popup').style.display = 'block';
     };
