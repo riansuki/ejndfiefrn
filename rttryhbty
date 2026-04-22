@@ -1240,13 +1240,20 @@
             extensionGroup.style.display = 'none'; 
         } else if (subType === '60') {
             extensionGroup.style.display = 'block'; 
+            // LOGIKA BARU: Teks dinamis khusus untuk initial 60 Days
+            if(allCards[0]) allCards[0].innerHTML = '<strong>0 Extension</strong><span>(60 days total)</span>';
+            if(allCards[1]) allCards[1].innerHTML = '<strong>1 Extension</strong><span>(120 days total)</span>';
+            if(allCards[2]) allCards[2].innerHTML = '<strong>2 Extensions</strong><span>(180 days total)</span>';
+            if(allCards[3]) allCards[3].innerHTML = '<strong style="font-size: 15px; line-height: 1.2;">Non extendable visa</strong><span style="font-size: 11px; margin-top: 4px;">(D8 non extendable)</span>';
         } else if (subType === '180') {
             extensionGroup.style.display = 'block';
+            // LOGIKA BARU: Teks dinamis khusus untuk initial 180 Days
+            if(allCards[0]) allCards[0].innerHTML = '<strong>0 Extension</strong><span>(180 days total)</span>';
+            if(allCards[1]) allCards[1].innerHTML = '<strong>1 Extension</strong><span>(360 days total)</span>';
             if(allCards[2]) allCards[2].style.display = 'none'; 
             if(allCards[3]) allCards[3].style.display = 'none'; 
         }
     }
-
 
         const visaForm = document.getElementById('visa-form');
         const visaTypeSelect = document.getElementById('visa-type');
