@@ -1701,14 +1701,22 @@
                 `;
                 extHtml += `</div>`;
                 resultCardContent.innerHTML = extHtml;
+            // LOGIKA BARU: Sembunyikan kartu Expiry Date secara total jika ini Visa MREP
+                const expiryCard = document.getElementById('expiry-details').closest('.result-card');
+                if (expiryCard) expiryCard.style.display = 'none';
+
             } else {
                 // Tampilan standar untuk Visa A, B, dan C
                 resultHeader.textContent = "Extension & Allowed Stay total";
                 resultCardContent.innerHTML = `extension: <strong>${extensions}</strong> (${extensionOnlyDays} days)<br>Allowed total stay: <strong>${totalDays} days</strong>`;
+                
+                // LOGIKA BARU: Tampilkan kembali kartu Expiry Date jika ini bukan Visa MREP
+                const expiryCard = document.getElementById('expiry-details').closest('.result-card');
+                if (expiryCard) expiryCard.style.display = 'flex';
+                
+                document.getElementById('expiry-card-title').textContent = "Visa Latest Expiry Date and Extensions";
+                document.getElementById('expiry-details').innerHTML = expiryDetailsHtml;
             }
-            
-            document.getElementById('expiry-card-title').textContent = "Visa Latest Expiry Date and Extensions";
-            document.getElementById('expiry-details').innerHTML = expiryDetailsHtml;
 
             document.getElementById('remaining-days-details').innerHTML = remainingDaysMessage + exitWarningMessage;
             
