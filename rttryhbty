@@ -1238,10 +1238,10 @@
             infoContent = `<strong>Applicable Visa Types (30 Days):</strong> Visa D7`;
         } 
         else if (value === '60') {
-            infoContent = `<strong>Applicable Visa Types (60 Days):</strong> Visa D1, D2, D3, D17, D8.<br><span style="color:#d32f2f; font-size:13px;">*Note: Visa D8 is also 60 days but Non-Extendable.</span>`;
+            infoContent = `<strong>Applicable Visa Types (60 Days):</strong> Visa D1, D2, D3, D4, D14, D17, D8.<br><span style="color:#d32f2f; font-size:13px;">*Note: Visa D8 is also 60 days but Non-Extendable.</span>`;
         } 
         else if (value === '180') {
-            infoContent = `<strong>Applicable Visa Types (180 Days):</strong> Visa D12, D14`;
+            infoContent = `<strong>Applicable Visa Types (180 Days):</strong> Visa D12`;
         }
 
         dynamicBox.innerHTML = infoContent;
@@ -1520,9 +1520,27 @@
             }
 
             const extensionOnlyDays = extensions * extensionDurationPerUnit;
-            const totalDays = baseDays + extensionOnlyDays;
             
-            const formatDate = (date) => date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            // LOGIKA BARU: Hitung total dari penambahan trip di timeline (jika ada)
+            let additionalTripsTotal = 0;
+            if (visaType === 'visaD' && window.additionalTrips) {
+                window.additionalTrips.forEach(trip => {
+                    additionalTripsTotal += trip;
+                });
+            }
+
+            // Total Days sekarang mencakup Stay Awal + Ekstensi Awal + Semua Trip Tambahan
+            const totalDays = baseDays + extensionOnlyDays + additionalTripsTotal;
+            
+            // Gunakan format en-GB agar konsisten dengan timeline (Contoh: 5 Oct 2026)
+            const formatDate = (date) => date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+            // Fungsi pembantu untuk menghitung tanggal berdasarkan jumlah hari dari entry date
+            const getCalculatedDate = (daysCount) => {
+                let d = new Date(entryDate);
+                d.setDate(d.getDate() + (daysCount - 1));
+                return formatDate(d);
+            };
 
             const dateForFirstExtension = new Date(entryDate);
             dateForFirstExtension.setDate(dateForFirstExtension.getDate() + baseDays); 
@@ -1617,7 +1635,53 @@
             document.getElementById('base-duration-label').textContent = baseDurationLabelText; 
             document.getElementById('base-duration-result').textContent = `${baseDays} days`;
             
-            document.getElementById('extension-stay-result').innerHTML = `extension: <strong>${extensions}</strong> (${extensionOnlyDays} days)<br>Allowed total stay: <strong>${totalDays} days</strong>`; 
+            // LOGIKA BARU: Membuat tampilan list ekstensi dinamis untuk MREP
+            const resultCardContent = document.getElementById('extension-stay-result');
+            const resultHeader = resultCardContent.previousElementSibling; // Mengambil element <h3>
+
+            if (visaType === 'visaD' && document.getElementById('visa-validity').value) {
+                resultHeader.textContent = "Visa Extensions & Extension Validity Date";
+                
+                let firstStayTotal = baseDays + extensionOnlyDays;
+                let runningTotal = firstStayTotal;
+                
+                let extHtml = `<div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">`;
+                
+                // 1. First Extension
+                extHtml += `<div>First extension: <strong>${extensions}x</strong> (${extensionOnlyDays} days) // Extension validity date: <strong>${getCalculatedDate(firstStayTotal)}</strong></div>`;
+                
+                // 2. Second, Third, dst (dari Add Trip)
+                if (window.additionalTrips && window.additionalTrips.length > 0) {
+                    const ordinals = ["Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+                    window.additionalTrips.forEach((tripDays, idx) => {
+                        runningTotal += tripDays;
+                        let ordinal = ordinals[idx] || `${idx + 2}th`;
+                        extHtml += `<div>${ordinal} Extension (Added Trip): <strong>${tripDays} days</strong> // extension validity date: <strong>${getCalculatedDate(runningTotal)}</strong></div>`;
+                    });
+                }
+                
+                // 3. Batas Akhir Masa Berlaku (Bold)
+                const validityYears = parseInt(document.getElementById('visa-validity').value);
+                const validityLimitDays = validityYears * 360;
+                extHtml += `<div style="margin-top: 5px; font-size: 17px; color: #1a3a6d;"><strong>Latest Visa Expiry date: ${getCalculatedDate(validityLimitDays)}</strong></div>`;
+                
+                // 4. Selipkan Notice Box (Sesuai Gambar)
+                extHtml += `
+                    <div style="margin-top: 15px; padding: 12px; background-color: #fffde7; border-left: 4px solid #FFC107; font-size: 13px; color: #666; line-height: 1.5; border-radius: 4px;">
+                        <i class="fas fa-info-circle" style="color: #FFC107; margin-right: 5px;"></i>
+                        <strong>IMPORTANT NOTICE:</strong> Please ensure your application for a stay permit extension is filed a minimum of 7 days before the expiry date to avoid the risk of overstaying
+                    </div>
+                `;
+                
+                extHtml += `</div>`;
+                extHtml += `<div style="padding-top: 10px; border-top: 1px dashed #ccc;">Allowed total stay: <strong>${totalDays} days</strong></div>`;
+                
+                resultCardContent.innerHTML = extHtml;
+            } else {
+                // Tampilan standar untuk Visa A, B, dan C
+                resultHeader.textContent = "Extension & Allowed Stay total";
+                resultCardContent.innerHTML = `extension: <strong>${extensions}</strong> (${extensionOnlyDays} days)<br>Allowed total stay: <strong>${totalDays} days</strong>`;
+            }
             
             document.getElementById('expiry-card-title').textContent = "Visa Latest Expiry Date and Extensions";
             document.getElementById('expiry-details').innerHTML = expiryDetailsHtml;
