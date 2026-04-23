@@ -1609,7 +1609,7 @@
                       }
                  }
             } else { 
-                 remainingDaysMessage = `<p>Your allowed stay duration is <strong>${totalDays} day(s)</strong>, expiring on <strong>${formatDate(finalExpiryDate)}</strong>.</p>`;
+                 remainingDaysMessage = `<p>Your stay duration is <strong>${totalDays} day(s)</strong>, expiring on <strong>${formatDate(finalExpiryDate)}</strong>.</p>`;
                  
                  if (today > finalExpiryDate) {
                  overstayDays = Math.ceil((today - finalExpiryDate) / (1000 * 60 * 60 * 24));
@@ -1644,38 +1644,62 @@
                 
                 let firstStayTotal = baseDays + extensionOnlyDays;
                 let runningTotal = firstStayTotal;
+                let extHtml = `<div style="display: flex; flex-direction: column; gap: 8px;">`;
                 
-                let extHtml = `<div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">`;
+                // --- VISUAL BARU UNTUK LIST MREP (Contoh WhatsApp) ---
+
+                // 1. Initial Stay (First given visa expiry)
+                extHtml += `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-weight: bold; color: #1a3a6d; font-size: 14px;">1.</span>
+                        <span style="font-size: 14px;">First Stay (Initial + Extension): <strong>${firstStayTotal} days</strong> <span style="color: #666; font-size: 12px;">(${baseDays} + ${extensionOnlyDays})</span></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #1a3a6d; background: #e3f2fd; padding: 4px 8px; border-radius: 4px; font-weight: 600;">
+                        <i class="far fa-calendar-alt"></i>
+                        Validity: ${getCalculatedDate(firstStayTotal)}
+                    </div>
+                </div>`;
                 
-                // 1. First Extension
-                extHtml += `<div>First extension: <strong>${extensions}x</strong> (${extensionOnlyDays} days) // Extension validity date: <strong>${getCalculatedDate(firstStayTotal)}</strong></div>`;
-                
-                // 2. Second, Third, dst (dari Add Trip)
+                // 2. Added Trips (Extensions setelah add trip)
                 if (window.additionalTrips && window.additionalTrips.length > 0) {
-                    const ordinals = ["Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
                     window.additionalTrips.forEach((tripDays, idx) => {
                         runningTotal += tripDays;
-                        let ordinal = ordinals[idx] || `${idx + 2}th`;
-                        extHtml += `<div>${ordinal} Extension (Added Trip): <strong>${tripDays} days</strong> // extension validity date: <strong>${getCalculatedDate(runningTotal)}</strong></div>`;
+                        extHtml += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-weight: bold; color: #1a3a6d; font-size: 14px;">${idx + 2}.</span>
+                                <span style="font-size: 14px;">Extension Trip ${idx + 2}: <strong>${tripDays} days</strong></span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #1a3a6d; background: #e3f2fd; padding: 4px 8px; border-radius: 4px; font-weight: 600;">
+                                <i class="far fa-calendar-alt"></i>
+                                Validity: ${getCalculatedDate(runningTotal)}
+                            </div>
+                        </div>`;
                     });
                 }
                 
-                // 3. Batas Akhir Masa Berlaku (Bold)
+                // 3. Latest Expiry Date (Garis Putus-Putus & Tanggal Terakhir)
                 const validityYears = parseInt(document.getElementById('visa-validity').value);
                 const validityLimitDays = validityYears * 360;
-                extHtml += `<div style="margin-top: 5px; font-size: 17px; color: #1a3a6d;"><strong>Latest Visa Expiry date: ${getCalculatedDate(validityLimitDays)}</strong></div>`;
                 
-                // 4. Selipkan Notice Box (Sesuai Gambar)
                 extHtml += `
-                    <div style="margin-top: 15px; padding: 12px; background-color: #fffde7; border-left: 4px solid #FFC107; font-size: 13px; color: #666; line-height: 1.5; border-radius: 4px;">
-                        <i class="fas fa-info-circle" style="color: #FFC107; margin-right: 5px;"></i>
-                        <strong>IMPORTANT NOTICE:</strong> Please ensure your application for a stay permit extension is filed a minimum of 7 days before the expiry date to avoid the risk of overstaying
+                <div style="margin-top: 10px; padding: 10px 5px; border-top: 1px dashed #ccc;">
+                    <span style="font-size: 16px; color: #1a3a6d;"><strong>Latest Visa Expiry date: ${getCalculatedDate(validityLimitDays)}</strong></span>
+                </div>`;
+                
+                // Teks "Allowed total stay" dihapus khusus untuk Visa D.
+
+                // 4. Notice Box
+                extHtml += `
+                    <div style="margin-top: 15px; padding: 15px; background-color: #fffde7; border-left: 4px solid #FFC107; font-size: 13px; color: #555; line-height: 1.5; border-radius: 4px; box-shadow: 0 2px 4px rgba(255, 193, 7, 0.1);">
+                        <div style="display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fas fa-info-circle" style="color: #FFC107; font-size: 18px; margin-top: 2px;"></i>
+                            <div><strong>IMPORTANT NOTICE:</strong> Please ensure your application for a stay permit extension is filed a minimum of 7 days before the expiry date to avoid the risk of overstaying</div>
+                        </div>
                     </div>
                 `;
-                
                 extHtml += `</div>`;
-                extHtml += `<div style="padding-top: 10px; border-top: 1px dashed #ccc;">Allowed total stay: <strong>${totalDays} days</strong></div>`;
-                
                 resultCardContent.innerHTML = extHtml;
             } else {
                 // Tampilan standar untuk Visa A, B, dan C
