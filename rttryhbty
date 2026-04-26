@@ -616,7 +616,7 @@
                                 <option value="visaA">Visa Exemption (Visa A type) (30 days)</option>
                                 <option value="visaB">Visa on Arrival (VOA) (30 days)</option>
                                 <option value="visaC">Single Entry C Visas </option>
-                                <option value="visaD">Multiple Re-Entry Permit (MREP) Visa</option>
+                                <option value="visaD">Multiple Entry D Visa</option>
                             </select>
                         </div>
 
@@ -906,7 +906,7 @@
         let infoContent = "";
 
         if (value === '30') {
-            infoContent = `<strong>Applicable Visa Types (30 Days):</strong> Visa C7A, C7B, C7C`;
+            infoContent = `<strong>Applicable Visa Types (30 Days):</strong> Visa C7, C7A, C7B, C7C`;
         } 
         else if (value === '60') {
             infoContent = `<strong>Applicable Visa Types (60 Days):</strong> Visa C1, C2, C3, C5, C6, C7, C8A, C8B, C9, C9A, C9B, C10, C10A, C11, C11A, C13, C14, C15, C16, C17, C19, C20, C21`;
@@ -1542,17 +1542,20 @@
                 return formatDate(d);
             };
 
+            // LOGIKA BARU: Hari kedatangan (Entry Date) dihitung sebagai Hari ke-1 (Day 1).
+            // Oleh karena itu, kita kurangi 1 (- 1) pada perhitungan tanggal jatuh tempo awal dan akhir.
+            
             const dateForFirstExtension = new Date(entryDate);
-            dateForFirstExtension.setDate(dateForFirstExtension.getDate() + baseDays); 
-
+            dateForFirstExtension.setDate(dateForFirstExtension.getDate() + (baseDays - 1));
+            
             const dateForSecondExtension = new Date(dateForFirstExtension);
             dateForSecondExtension.setDate(dateForSecondExtension.getDate() + extensionDurationPerUnit); 
 
             const dateForThirdExtension = new Date(dateForSecondExtension);
-            dateForThirdExtension.setDate(dateForThirdExtension.getDate() + extensionDurationPerUnit); 
-
+            dateForThirdExtension.setDate(dateForThirdExtension.getDate() + extensionDurationPerUnit);
+            
             const finalExpiryDate = new Date(entryDate);
-            finalExpiryDate.setDate(finalExpiryDate.getDate() + totalDays);
+            finalExpiryDate.setDate(finalExpiryDate.getDate() + (totalDays - 1));
 
             let expiryDetailsHtml = ''; 
 
